@@ -1,18 +1,18 @@
 {
   "CSG": {
     "password": "CSG",
-    "techniker": ["Rene Gieler", "Antje von Lengerken"]
+    "techniker": ["", "Rene Gieler", "Antje von Lengerken"]
   },
   "TopMont": {
     "password": "TM",
-    "techniker": ["Hassan", "Boris", "Eugen"]
+    "techniker": ["", "Hassan", "Boris", "Eugen"]
   },
   "Brunner": {
     "password": "brunner",
-    "techniker": ["Franz Brunner"]
+    "techniker": ["", "Franz Brunner"]
   },
   "SOS": {
     "password": "SOS123",
-    "techniker": ["Markus", "Matthias", "Peter Pan"]
+    "techniker": ["", "Markus", "Matthias", "Peter Pan"]
   }
 }
