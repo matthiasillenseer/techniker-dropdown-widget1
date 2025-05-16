@@ -2,32 +2,34 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Techniker Dropdown mit Dienstleister & Passwort</title>
+    <title>Techniker Dropdown mit Dienstleister-Textfeld & Passwort</title>
     <script src="//js.jotform.com/JotFormCustomWidget.min.js"></script>
     <style>
       body { font-family: Arial, sans-serif; margin:0; padding:10px; }
       #main { width:100%; }
       label { display:block; margin-bottom:5px; font-weight:bold; }
-      select, input[type=password] { width:100%; padding:8px; font-size:1em; box-sizing:border-box; margin-bottom:10px; }
+      input[type=text], input[type=password], select { width:100%; padding:8px; font-size:1em; box-sizing:border-box; margin-bottom:10px; }
       .error { color: red; font-size:0.9em; }
     </style>
   </head>
   <body>
     <div id="main">
-      <label for="providerSelect">Dienstleister auswählen:</label>
-      <select id="providerSelect"><option value="">Bitte wählen…</option></select>
+      <label for="providerInput">Dienstleister eingeben:</label>
+      <input id="providerInput" type="text" placeholder="z.B. CSG, TopMont, SOS" autocomplete="off" />
 
       <label for="pwInput">Passwort:</label>
       <input id="pwInput" type="password" placeholder="Passwort eingeben" />
-      <div id="pwError" class="error" style="display:none;">Falsches Passwort für den ausgewählten Dienstleister</div>
+      <div id="pwError" class="error" style="display:none;">Falsches Passwort für den eingegebenen Dienstleister</div>
 
       <label for="technikerSelect">Techniker auswählen:</label>
-      <select id="technikerSelect" disabled><option value="">Zuerst Dienstleister & Passwort</option></select>
+      <select id="technikerSelect" disabled>
+        <option value="">Zuerst Dienstleister & Passwort</option>
+      </select>
     </div>
 
     <script>
     (function(){
-      var providerSelect = document.getElementById('providerSelect');
+      var providerInput = document.getElementById('providerInput');
       var pwInput       = document.getElementById('pwInput');
       var pwError       = document.getElementById('pwError');
       var techSelect    = document.getElementById('technikerSelect');
@@ -36,38 +38,29 @@
 
       function loadData(callback) {
         fetch(jsonUrl + '?t=' + Date.now())
-          .then(function(res){ if(!res.ok) throw Error('Load failed'); return res.json(); })
-          .then(function(json){ dataStore = json; callback(); })
+          .then(function(res){ if(!res.ok) throw new Error('Ladefehler'); return res.json(); })
+          .then(function(json){ dataStore = json; if(callback) callback(); })
           .catch(function(){ console.error('Die JSON-Datei konnte nicht geladen werden.'); });
-      }
-
-      function fillProviders() {
-        providerSelect.innerHTML = '<option value="">Bitte wählen…</option>';
-        Object.keys(dataStore).forEach(function(provider){
-          var opt = document.createElement('option');
-          opt.value = provider;
-          opt.textContent = provider;
-          providerSelect.appendChild(opt);
-        });
-        JFCustomWidget.requestFrameResize({ height: document.body.scrollHeight });
       }
 
       function tryUnlock() {
         pwError.style.display = 'none';
-        var sel = providerSelect.value;
-        if(!sel || !dataStore[sel]) {
+        var provider = providerInput.value.trim();
+        if(!provider || !dataStore[provider]) {
           techSelect.disabled = true;
-          techSelect.innerHTML = '<option value="">Bitte Dienstleister wählen</option>';
+          techSelect.innerHTML = '<option value="">Dienstleister nicht gefunden</option>';
+          JFCustomWidget.requestFrameResize({ height: document.body.scrollHeight });
           return;
         }
-        if(pwInput.value !== dataStore[sel].password) {
+
+        if(pwInput.value !== dataStore[provider].password) {
           techSelect.disabled = true;
           pwError.style.display = 'block';
           techSelect.innerHTML = '<option value="">Zugriff verweigert</option>';
         } else {
           pwError.style.display = 'none';
           techSelect.disabled = false;
-          buildTechOptions(dataStore[sel].techniker);
+          buildTechOptions(dataStore[provider].techniker);
         }
         JFCustomWidget.requestFrameResize({ height: document.body.scrollHeight });
       }
@@ -83,9 +76,9 @@
       }
 
       JFCustomWidget.subscribe("ready", function(){
-        loadData(fillProviders);
+        loadData();
 
-        providerSelect.addEventListener('change', tryUnlock);
+        providerInput.addEventListener('input', tryUnlock);
         pwInput.addEventListener('input', tryUnlock);
         techSelect.addEventListener('change', function(){
           JFCustomWidget.sendData({ value: techSelect.value });
