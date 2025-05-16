@@ -1,18 +1,18 @@
 {
   "CSG": {
-    "password": "geheimCSG",
-    "techniker": ["Peter", "Franz"]
+    "password": "CSG",
+    "techniker": ["Rene Gieler", "Antje von Lengerken"]
   },
   "TopMont": {
-    "password": "mont123",
-    "techniker": ["Anna", "Boris", "Claudia"]
+    "password": "TM",
+    "techniker": ["Hassan", "Boris", "Eugen"]
   },
   "Brunner": {
-    "password": "brunnerPW",
-    "techniker": ["Hermann", "Lena"]
+    "password": "brunner",
+    "techniker": ["Franz Brunner"]
   },
   "SOS": {
-    "password": "sosSafe",
-    "techniker": ["Max", "Alex", "Eugen"]
+    "password": "SOS123",
+    "techniker": ["Markus", "Matthias", "Peter Pan"]
   }
 }
