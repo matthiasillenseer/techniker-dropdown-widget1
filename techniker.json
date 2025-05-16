@@ -1,0 +1,18 @@
+{
+  "CSG": {
+    "password": "geheimCSG",
+    "techniker": ["Peter", "Franz"]
+  },
+  "TopMont": {
+    "password": "mont123",
+    "techniker": ["Anna", "Boris", "Claudia"]
+  },
+  "Brunner": {
+    "password": "brunnerPW",
+    "techniker": ["Hermann", "Lena"]
+  },
+  "SOS": {
+    "password": "sosSafe",
+    "techniker": ["Max", "Alex", "Eugen"]
+  }
+}
