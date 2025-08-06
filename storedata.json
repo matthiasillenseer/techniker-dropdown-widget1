@@ -1,6 +1,5 @@
 {
   "1001": {
-    "password": "abc123",
     "data": {
       "city": "Berlin",
       "zip": "10115",
@@ -8,11 +7,10 @@
     }
   },
   "1002": {
-    "password": "xyz789",
     "data": {
       "city": "Hamburg",
       "zip": "20095",
-      "street": "Testweg 9"
+      "street": "Beispielweg 5"
     }
   }
 }
