@@ -8,6 +8,7 @@
   label { display: block; margin-top: 10px; }
   input, select { width: 100%; padding: 5px; font-size: 14px; }
   .info { margin-top: 10px; color: red; font-weight: bold; }
+  pre#debug { margin-top: 20px; background: #eee; padding: 10px; max-height: 200px; overflow: auto; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -27,19 +28,24 @@
 
 <div class="info" id="info"></div>
 
+<pre id="debug"></pre>
+
 <script>
   const params = window.parameters || {};
-  const storeDataParam = params['storeData'] || [];
-  
-  // storeData als Objekt { storeNr: {city, zip, street}, ... }
+  const storeDataParam = Array.isArray(params['storeData']) ? params['storeData'] : [];
+
+  console.log("storeDataParam:", storeDataParam);
+
   const storeData = {};
   storeDataParam.forEach(item => {
     try {
       storeData[item.key] = JSON.parse(item.value);
-    } catch {
-      // Fehlerhafte JSON ignorieren
+    } catch (e) {
+      console.warn("Fehler beim Parsen von Store-Daten für Key", item.key);
     }
   });
+
+  document.getElementById('debug').textContent = JSON.stringify(storeData, null, 2);
 
   const storeSelect = document.getElementById('storeSelect');
   const datalist = document.getElementById('storeList');
@@ -91,7 +97,6 @@
     sendAnswer();
   });
 
-  // Antwort an Jotform senden: JSON aller Felder
   function sendAnswer() {
     if (window.parent && window.parent.postMessage) {
       const answer = {
@@ -107,7 +112,6 @@
     }
   }
 
-  // Felder auch beim Verlassen aktualisieren
   [city, zip, street].forEach(field => {
     field.addEventListener('input', sendAnswer);
   });
