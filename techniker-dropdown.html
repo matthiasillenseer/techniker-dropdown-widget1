@@ -2,145 +2,237 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8" />
-<title>Store Lookup Widget mit Offline-Fallback</title>
-<script src="//js.jotform.com/JotFormCustomWidget.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Store Lookup Widget</title>
 <style>
-  body { font-family: Arial, sans-serif; padding: 10px; margin: 0; }
-  label { display: block; margin-top: 15px; font-weight: bold; }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0; padding: 15px; background: #f9f9f9; color: #333;
+  }
+  label {
+    font-weight: 600;
+    margin-top: 15px;
+    display: block;
+  }
   input[type=text] {
-    width: 100%; padding: 8px; font-size: 1em; border: 1px solid #ccc; border-radius: 5px;
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 1rem;
+    border: 1.5px solid #ccc;
+    border-radius: 6px;
+    transition: border-color 0.3s;
     box-sizing: border-box;
   }
-  .error { color: red; font-size: 0.9em; margin-top: 6px; display: none; }
+  input[type=text]:focus {
+    border-color: #007bff;
+    outline: none;
+  }
+  input.invalid {
+    border-color: #dc3545;
+    background: #ffe6e6;
+  }
+  .error {
+    color: #dc3545;
+    font-size: 0.9rem;
+    margin-top: 4px;
+    display: none;
+  }
+  .info {
+    font-size: 0.9rem;
+    margin-top: 8px;
+    color: #555;
+  }
 </style>
 </head>
 <body>
-  <label for="storeInput">Store-Nummer (4-stellig)</label>
-  <input id="storeInput" maxlength="4" inputmode="numeric" placeholder="z. B. 1001" />
-  <div id="storeError" class="error">Fehler</div>
 
-  <label for="city">Ort</label>
-  <input id="city" type="text" placeholder="Ort" />
+<label for="storeInput">Store-Nummer (4-stellig)</label>
+<input id="storeInput" maxlength="4" inputmode="numeric" autocomplete="off" placeholder="z. B. 1001" />
+<div id="storeError" class="error">Store-Nummer muss 4 Ziffern enthalten.</div>
+<div id="storeInfo" class="info">Gib eine Store-Nummer ein, um Daten automatisch zu laden. Nicht gefunden? Trage die Felder manuell aus.</div>
 
-  <label for="zip">PLZ</label>
-  <input id="zip" type="text" placeholder="Postleitzahl" />
+<label for="cityInput">Ort</label>
+<input id="cityInput" type="text" placeholder="Ort" autocomplete="off" />
 
-  <label for="street">Straße</label>
-  <input id="street" type="text" placeholder="Straße mit Hausnummer" />
+<label for="zipInput">PLZ</label>
+<input id="zipInput" type="text" placeholder="Postleitzahl" autocomplete="off" />
 
-<script>
-(function(){
-  const storeInput = document.getElementById('storeInput');
-  const city = document.getElementById('city');
-  const zip = document.getElementById('zip');
-  const street = document.getElementById('street');
-  const storeError = document.getElementById('storeError');
+<label for="streetInput">Straße</label>
+<input id="streetInput" type="text" placeholder="Straße mit Hausnummer" autocomplete="off" />
 
-  let storeData = {};
-  let onlineDataLoaded = false;
+<script type="text/javascript">
+  // Asynchron JotForm Custom Widget API laden und starten
+  (function() {
+    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
+    po.src = '//js.jotform.com/JotFormCustomWidget.min.js?onload=onLoadCallback';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+  })();
 
-  function parseStaticData(jsonString) {
-    try {
-      return JSON.parse(jsonString || '{}');
-    } catch(e) {
-      console.error('Fehler beim Parsen der statischen Store-Daten', e);
-      return {};
+  function onLoadCallback() {
+    const storeInput = document.getElementById('storeInput');
+    const cityInput = document.getElementById('cityInput');
+    const zipInput = document.getElementById('zipInput');
+    const streetInput = document.getElementById('streetInput');
+    const storeError = document.getElementById('storeError');
+    const storeInfo = document.getElementById('storeInfo');
+
+    let staticData = {};
+    let onlineData = null;
+    let useOnlineData = false;
+
+    // Hilfsfunktion: formatierten String erzeugen
+    function formatResult(storeNr, city, zip, street) {
+      return `${storeNr || ''}, ${city || ''}, ${zip || ''}, ${street || ''}`;
     }
-  }
 
-  function loadOnlineData(url) {
-    fetch(url + '?t=' + Date.now())
-      .then(res => {
-        if(!res.ok) throw new Error('Netzwerkfehler');
-        return res.json();
-      })
-      .then(data => {
-        storeData = data;
-        onlineDataLoaded = true;
-        validateAndFill(); // ggf. neu füllen, falls Daten aktualisiert
-      })
-      .catch(e => {
-        console.warn('Online-Daten konnten nicht geladen werden, nutze statische Daten');
-        // onlineDataLoaded bleibt false -> fallback auf statische Daten
+    // Daten aus statischem JSON-String parsen
+    function parseStaticData(jsonString) {
+      try {
+        return JSON.parse(jsonString || '{}');
+      } catch (e) {
+        console.warn('Fehler beim Parsen statischer Store-Daten:', e);
+        return {};
+      }
+    }
+
+    // Online Daten laden (fetch)
+    function loadOnlineData(url) {
+      fetch(url + '?t=' + Date.now())
+        .then(res => {
+          if (!res.ok) throw new Error('Netzwerkfehler');
+          return res.json();
+        })
+        .then(data => {
+          onlineData = data;
+          useOnlineData = true;
+          validateAndFill();
+        })
+        .catch(() => {
+          console.warn('Online-Daten konnten nicht geladen werden, Offline-Modus aktiv.');
+          useOnlineData = false;
+          validateAndFill();
+        });
+    }
+
+    // Felder leeren
+    function clearFields() {
+      cityInput.value = '';
+      zipInput.value = '';
+      streetInput.value = '';
+    }
+
+    // Felder mit Daten füllen
+    function fillFields(data) {
+      cityInput.value = data.city || '';
+      zipInput.value = data.zip || '';
+      streetInput.value = data.street || '';
+    }
+
+    // Eingaben validieren und Felder füllen oder manuelle Eingabe erlauben
+    function validateAndFill() {
+      const val = storeInput.value.trim();
+
+      // Validierung 4-stellig numerisch
+      if (!/^\d{4}$/.test(val)) {
+        storeError.style.display = 'block';
+        storeInput.classList.add('invalid');
+        clearFields();
+        sendData();
+        resizeFrame();
+        return;
+      }
+
+      storeError.style.display = 'none';
+      storeInput.classList.remove('invalid');
+
+      // Datenquelle: Online oder statisch
+      const dataSource = useOnlineData && onlineData ? onlineData : staticData;
+
+      if (dataSource[val]) {
+        fillFields(dataSource[val]);
+      } else {
+        clearFields();
+        storeError.textContent = 'Store nicht gefunden – bitte Felder manuell ausfüllen.';
+        storeError.style.display = 'block';
+      }
+
+      sendData();
+      resizeFrame();
+    }
+
+    // Daten an Jotform senden
+    function sendData() {
+      const formatted = formatResult(
+        storeInput.value.trim(),
+        cityInput.value.trim(),
+        zipInput.value.trim(),
+        streetInput.value.trim()
+      );
+      JFCustomWidget.sendData({ value: formatted });
+    }
+
+    // Widget iframe Höhe anpassen
+    function resizeFrame() {
+      const height = document.body.scrollHeight + 5;
+      JFCustomWidget.requestFrameResize({ height });
+    }
+
+    // Event-Listener auf Eingaben
+    function setupListeners() {
+      storeInput.addEventListener('input', () => {
+        validateAndFill();
       });
-  }
-
-  function clearFields() {
-    city.value = '';
-    zip.value = '';
-    street.value = '';
-  }
-
-  function fillFields(data) {
-    city.value = data.city || '';
-    zip.value = data.zip || '';
-    street.value = data.street || '';
-  }
-
-  function formatOutput(storeNr, cityVal, zipVal, streetVal) {
-    return `${storeNr}, ${cityVal}, ${zipVal}, ${streetVal}`;
-  }
-
-  function sendData() {
-    const formatted = formatOutput(storeInput.value.trim(), city.value.trim(), zip.value.trim(), street.value.trim());
-    JFCustomWidget.sendData({value: formatted});
-  }
-
-  function validateAndFill() {
-    const val = storeInput.value.trim();
-    const valid = /^[0-9]{4}$/.test(val);
-
-    storeError.style.display = 'none';
-    storeInput.classList.remove('invalid-input');
-    clearFields();
-
-    if (!valid) {
-      storeError.textContent = 'Store-Nr. muss genau 4 Ziffern enthalten.';
-      storeError.style.display = 'block';
-      sendData();
-      return;
+      [cityInput, zipInput, streetInput].forEach(el => {
+        el.addEventListener('input', () => {
+          sendData();
+        });
+      });
     }
 
-    // Datenquelle: Online oder statisch (Parameter)
-    const dataSource = onlineDataLoaded ? storeData : storeDataStatic;
-
-    if (dataSource[val]) {
-      fillFields(dataSource[val]);
-      sendData();
-    } else {
-      storeError.textContent = 'Store-Nr. nicht gefunden – bitte manuell eingeben.';
-      storeError.style.display = 'block';
-      sendData();
-    }
-  }
-
-  // Variablen für statische Daten aus Benutzerparameter
-  let storeDataStatic = {};
-
-  JFCustomWidget.subscribe('ready', function(data){
-    storeDataStatic = parseStaticData(data.settings.storeData);
-    storeData = storeDataStatic; // initial auf statische Daten setzen
-
-    // Versuch, Online-Daten zu laden, falls URL als Parameter definiert ist
-    if (data.settings.dataUrl) {
-      loadOnlineData(data.settings.dataUrl);
-    }
-
-    storeInput.addEventListener('input', validateAndFill);
-    city.addEventListener('input', sendData);
-    zip.addEventListener('input', sendData);
-    street.addEventListener('input', sendData);
-  });
-
-  JFCustomWidget.subscribe('submit', function(){
-    sendData();
-    const isValid = /^[0-9]{4}$/.test(storeInput.value.trim());
-    JFCustomWidget.sendSubmit({
-      valid: isValid,
-      value: formatOutput(storeInput.value.trim(), city.value.trim(), zip.value.trim(), street.value.trim())
+    // Submit Event
+    JFCustomWidget.subscribe('submit', function() {
+      const val = storeInput.value.trim();
+      const isValid = /^\d{4}$/.test(val);
+      JFCustomWidget.sendSubmit({
+        valid: isValid,
+        value: formatResult(
+          val,
+          cityInput.value.trim(),
+          zipInput.value.trim(),
+          streetInput.value.trim()
+        )
+      });
     });
-  });
-})();
+
+    // Ready Event
+    JFCustomWidget.subscribe('ready', function(data) {
+      // Statische Daten aus Parameter lesen
+      staticData = parseStaticData(data.settings.storeData);
+
+      // Optional Online-Daten URL aus Parameter lesen und laden
+      if (data.settings.dataUrl && data.settings.dataUrl.length > 0) {
+        loadOnlineData(data.settings.dataUrl);
+      } else {
+        useOnlineData = false;
+      }
+
+      setupListeners();
+
+      // Initial validieren und Felder füllen
+      if (data.value && data.value.length > 0) {
+        // Wenn Widget schon einen Wert hat (z.B. bei Bearbeitung), parse und fülle Felder
+        const parts = data.value.split(',').map(s => s.trim());
+        storeInput.value = parts[0] || '';
+        cityInput.value = parts[1] || '';
+        zipInput.value = parts[2] || '';
+        streetInput.value = parts[3] || '';
+      }
+
+      validateAndFill();
+      resizeFrame();
+    });
+  }
 </script>
+
 </body>
 </html>
