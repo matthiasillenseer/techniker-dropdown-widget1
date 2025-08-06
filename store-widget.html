@@ -7,7 +7,7 @@
   <style>
     body { font-family: Arial, sans-serif; padding: 10px; }
     label { display: block; margin-top: 10px; font-weight: bold; }
-    input, select { width: 100%; padding: 8px; font-size: 14px; box-sizing: border-box; }
+    input { width: 100%; padding: 8px; font-size: 14px; box-sizing: border-box; }
     .error { color: red; font-size: 0.9em; }
   </style>
 </head>
@@ -16,10 +16,7 @@
   <label for="storeInput">Store-Nr.:</label>
   <input list="storeList" id="storeInput" placeholder="z. B. 1001" />
   <datalist id="storeList"></datalist>
-
-  <label for="pwInput">Passwort:</label>
-  <input type="password" id="pwInput" placeholder="(optional)" />
-  <div id="pwError" class="error" style="display:none;">Falsches Passwort</div>
+  <div id="storeError" class="error" style="display:none;">Store-Nr. nicht gefunden</div>
 
   <label for="city">Ort:</label>
   <input type="text" id="city" readonly />
@@ -32,13 +29,12 @@
 
   <script>
     (function(){
-      const jsonUrl = 'https://matthiasillenseer.github.io/techniker-dropdown-widget1/storedata.json'; // <== anpassen!
+      const jsonUrl = 'https://matthiasillenseer.github.io/techniker-dropdown-widget1/storedata.json'; // <== Anpassen!
       let storeData = {};
 
       const storeInput = document.getElementById('storeInput');
-      const pwInput = document.getElementById('pwInput');
-      const pwError = document.getElementById('pwError');
       const datalist = document.getElementById('storeList');
+      const storeError = document.getElementById('storeError');
       const city = document.getElementById('city');
       const zip = document.getElementById('zip');
       const street = document.getElementById('street');
@@ -67,21 +63,13 @@
 
       function validateAndFill() {
         const storeNr = storeInput.value.trim();
-        const password = pwInput.value.trim();
         const entry = storeData[storeNr];
 
         clearFields();
-        pwError.style.display = 'none';
+        storeError.style.display = 'none';
 
         if (!entry) {
-          pwError.textContent = 'Store nicht gefunden';
-          pwError.style.display = 'block';
-          return;
-        }
-
-        if (entry.password && password !== entry.password) {
-          pwError.textContent = 'Falsches Passwort';
-          pwError.style.display = 'block';
+          storeError.style.display = 'block';
           return;
         }
 
@@ -113,17 +101,19 @@
       JFCustomWidget.subscribe('ready', function(){
         loadData();
         storeInput.addEventListener('input', validateAndFill);
-        pwInput.addEventListener('input', validateAndFill);
       });
 
       JFCustomWidget.subscribe('submit', function(){
         updateWidgetOutput();
-        JFCustomWidget.sendSubmit({ valid: city.value !== '', value: {
-          storeNr: storeInput.value,
-          city: city.value,
-          zip: zip.value,
-          street: street.value
-        }});
+        JFCustomWidget.sendSubmit({ 
+          valid: city.value !== '', 
+          value: {
+            storeNr: storeInput.value,
+            city: city.value,
+            zip: zip.value,
+            street: street.value
+          }
+        });
       });
     })();
   </script>
