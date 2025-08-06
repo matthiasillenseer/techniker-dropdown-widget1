@@ -1,0 +1,18 @@
+{
+  "1001": {
+    "password": "abc123",
+    "data": {
+      "city": "Berlin",
+      "zip": "10115",
+      "street": "Musterstraße 1"
+    }
+  },
+  "1002": {
+    "password": "xyz789",
+    "data": {
+      "city": "Hamburg",
+      "zip": "20095",
+      "street": "Testweg 9"
+    }
+  }
+}
