@@ -3,135 +3,129 @@
 <head>
   <meta charset="UTF-8" />
   <title>Store Lookup Widget</title>
+  <script src="//js.jotform.com/JotFormCustomWidget.min.js"></script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 10px;
-    }
-    label {
-      display: block;
-      margin-top: 10px;
-    }
-    input, datalist {
-      width: 100%;
-      padding: 5px;
-      font-size: 14px;
-      box-sizing: border-box;
-    }
-    .info {
-      margin-top: 10px;
-      font-size: 14px;
-      color: red;
-      font-weight: bold;
-    }
+    body { font-family: Arial, sans-serif; padding: 10px; }
+    label { display: block; margin-top: 10px; font-weight: bold; }
+    input, select { width: 100%; padding: 8px; font-size: 14px; box-sizing: border-box; }
+    .error { color: red; font-size: 0.9em; }
   </style>
 </head>
 <body>
 
-  <label for="storeSelect">Store-Nr. auswählen oder eingeben:</label>
-  <input list="storeList" id="storeSelect" name="storeSelect" autocomplete="off" />
+  <label for="storeInput">Store-Nr.:</label>
+  <input list="storeList" id="storeInput" placeholder="z. B. 1001" />
   <datalist id="storeList"></datalist>
 
+  <label for="pwInput">Passwort:</label>
+  <input type="password" id="pwInput" placeholder="(optional)" />
+  <div id="pwError" class="error" style="display:none;">Falsches Passwort</div>
+
   <label for="city">Ort:</label>
-  <input type="text" id="city" name="city" readonly />
+  <input type="text" id="city" readonly />
 
   <label for="zip">PLZ:</label>
-  <input type="text" id="zip" name="zip" readonly />
+  <input type="text" id="zip" readonly />
 
   <label for="street">Straße:</label>
-  <input type="text" id="street" name="street" readonly />
-
-  <div class="info" id="info"></div>
+  <input type="text" id="street" readonly />
 
   <script>
-    // Parameter auslesen
-    const params = window.parameters || {};
-    const storeDataParam = Array.isArray(params['storeData']) ? params['storeData'] : [];
+    (function(){
+      const jsonUrl = 'https://matthiasillenseer.github.io/techniker-dropdown-widget1/storedata.json'; // <== anpassen!
+      let storeData = {};
 
-    // Store-Daten als Objekt vorbereiten
-    const storeData = {};
-    storeDataParam.forEach(item => {
-      try {
-        storeData[item.key] = JSON.parse(item.value);
-      } catch (e) {
-        console.warn("Fehler beim Parsen für Store", item.key, e);
+      const storeInput = document.getElementById('storeInput');
+      const pwInput = document.getElementById('pwInput');
+      const pwError = document.getElementById('pwError');
+      const datalist = document.getElementById('storeList');
+      const city = document.getElementById('city');
+      const zip = document.getElementById('zip');
+      const street = document.getElementById('street');
+
+      function clearFields() {
+        city.value = '';
+        zip.value = '';
+        street.value = '';
       }
-    });
 
-    // DOM-Elemente referenzieren
-    const storeSelect = document.getElementById('storeSelect');
-    const datalist = document.getElementById('storeList');
-    const city = document.getElementById('city');
-    const zip = document.getElementById('zip');
-    const street = document.getElementById('street');
-    const info = document.getElementById('info');
-
-    // Datalist mit Store-IDs füllen
-    Object.keys(storeData).forEach(key => {
-      const option = document.createElement('option');
-      option.value = key;
-      datalist.appendChild(option);
-    });
-
-    function clearFields() {
-      city.value = '';
-      zip.value = '';
-      street.value = '';
-    }
-
-    function setFields(data) {
-      city.value = data.city || '';
-      zip.value = data.zip || '';
-      street.value = data.street || '';
-    }
-
-    function setEditable(editable) {
-      city.readOnly = !editable;
-      zip.readOnly = !editable;
-      street.readOnly = !editable;
-    }
-
-    function sendAnswer() {
-      const answer = {
-        storeNr: storeSelect.value.trim(),
-        city: city.value.trim(),
-        zip: zip.value.trim(),
-        street: street.value.trim()
-      };
-
-      if (window.parent && window.parent.postMessage) {
-        window.parent.postMessage({
-          type: 'setAnswer',
-          value: JSON.stringify(answer)
-        }, '*');
+      function fillFields(data) {
+        city.value = data.city || '';
+        zip.value = data.zip || '';
+        street.value = data.street || '';
       }
-    }
 
-    // Event für Store-Auswahl
-    storeSelect.addEventListener('input', () => {
-      const selectedStore = storeSelect.value.trim();
-      const found = storeData[selectedStore];
+      function updateWidgetOutput() {
+        const output = {
+          storeNr: storeInput.value,
+          city: city.value,
+          zip: zip.value,
+          street: street.value
+        };
+        JFCustomWidget.sendData({ value: output });
+      }
 
-      if (found) {
-        setFields(found);
-        setEditable(false);
-        info.textContent = '';
-      } else if (selectedStore === '') {
+      function validateAndFill() {
+        const storeNr = storeInput.value.trim();
+        const password = pwInput.value.trim();
+        const entry = storeData[storeNr];
+
         clearFields();
-        setEditable(false);
-        info.textContent = '';
-      } else {
-        clearFields();
-        setEditable(true);
-        info.textContent = 'Store nicht gefunden. Bitte Daten manuell eingeben.';
+        pwError.style.display = 'none';
+
+        if (!entry) {
+          pwError.textContent = 'Store nicht gefunden';
+          pwError.style.display = 'block';
+          return;
+        }
+
+        if (entry.password && password !== entry.password) {
+          pwError.textContent = 'Falsches Passwort';
+          pwError.style.display = 'block';
+          return;
+        }
+
+        fillFields(entry.data);
+        updateWidgetOutput();
       }
 
-      sendAnswer();
-    });
+      function populateDatalist() {
+        for (const storeNr in storeData) {
+          const opt = document.createElement('option');
+          opt.value = storeNr;
+          datalist.appendChild(opt);
+        }
+      }
 
-    [city, zip, street].forEach(field => {
-      field.addEventListener('input', sendAnswer);
-    });
+      function loadData() {
+        fetch(jsonUrl + '?t=' + Date.now())
+          .then(res => res.json())
+          .then(data => {
+            storeData = data;
+            populateDatalist();
+          })
+          .catch(err => {
+            console.error('Fehler beim Laden der Storedaten', err);
+          });
+      }
+
+      // Init
+      JFCustomWidget.subscribe('ready', function(){
+        loadData();
+        storeInput.addEventListener('input', validateAndFill);
+        pwInput.addEventListener('input', validateAndFill);
+      });
+
+      JFCustomWidget.subscribe('submit', function(){
+        updateWidgetOutput();
+        JFCustomWidget.sendSubmit({ valid: city.value !== '', value: {
+          storeNr: storeInput.value,
+          city: city.value,
+          zip: zip.value,
+          street: street.value
+        }});
+      });
+    })();
   </script>
 </body>
 </html>
