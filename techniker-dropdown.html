@@ -46,12 +46,6 @@
       border-color: #007bff;
     }
 
-    .hint {
-      font-size: 0.85em;
-      color: #777;
-      margin-top: 4px;
-    }
-
     .error {
       color: #d8000c;
       font-size: 0.9em;
@@ -59,8 +53,18 @@
       display: none;
     }
 
+    .hint {
+      font-size: 0.85em;
+      color: #777;
+      margin-top: 4px;
+    }
+
     .field-group {
       margin-bottom: 10px;
+    }
+
+    .invalid-input {
+      border-color: #d8000c !important;
     }
   </style>
 </head>
@@ -68,9 +72,9 @@
   <div class="card">
     <div class="field-group">
       <label for="storeInput">Store-Nummer</label>
-      <input id="storeInput" type="text" placeholder="z. B. 1001" />
-      <div class="hint">Gib eine Store-Nummer ein – automatische Suche bei Übereinstimmung.</div>
-      <div id="storeError" class="error">Store-Nr. nicht gefunden – bitte manuell eingeben.</div>
+      <input id="storeInput" type="text" maxlength="4" inputmode="numeric" placeholder="z. B. 1001" />
+      <div class="hint">Gib eine 4-stellige Store-Nummer ein. Automatische Suche bei Treffer.</div>
+      <div id="storeError" class="error">Fehler</div>
     </div>
 
     <div class="field-group">
@@ -124,14 +128,25 @@
 
       function validateAndFill() {
         const storeNr = storeInput.value.trim();
-        const entry = storeData[storeNr];
+        const isValidFormat = /^[0-9]{4}$/.test(storeNr);
+        const entry = isValidFormat ? storeData[storeNr] : null;
 
         storeError.style.display = 'none';
+        storeInput.classList.remove('invalid-input');
         clearFields();
 
-        if (!entry) {
+        if (!isValidFormat) {
+          storeError.textContent = 'Store-Nr. muss genau 4 Ziffern enthalten.';
           storeError.style.display = 'block';
-          updateWidgetOutput(); // Nutzer darf manuell eingeben
+          storeInput.classList.add('invalid-input');
+          updateWidgetOutput();
+          return;
+        }
+
+        if (!entry) {
+          storeError.textContent = 'Store-Nr. nicht gefunden – bitte manuell eingeben.';
+          storeError.style.display = 'block';
+          updateWidgetOutput();
           return;
         }
 
@@ -163,7 +178,7 @@
       JFCustomWidget.subscribe('submit', function () {
         updateWidgetOutput();
         JFCustomWidget.sendSubmit({
-          valid: storeInput.value.trim() !== '',
+          valid: /^[0-9]{4}$/.test(storeInput.value.trim()),
           value: {
             storeNr: storeInput.value.trim(),
             city: city.value.trim(),
