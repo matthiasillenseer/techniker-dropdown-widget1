@@ -117,13 +117,15 @@
       }
 
       function updateWidgetOutput() {
-        const output = {
-          storeNr: storeInput.value.trim(),
-          city: city.value.trim(),
-          zip: zip.value.trim(),
-          street: street.value.trim()
-        };
-        JFCustomWidget.sendData({ value: output });
+        const storeNr = storeInput.value.trim();
+        const cityVal = city.value.trim();
+        const zipVal = zip.value.trim();
+        const streetVal = street.value.trim();
+
+        // Formatierten String erzeugen
+        const formattedOutput = `${storeNr}, ${cityVal}, ${zipVal}, ${streetVal}`;
+
+        JFCustomWidget.sendData({ value: formattedOutput });
       }
 
       function validateAndFill() {
