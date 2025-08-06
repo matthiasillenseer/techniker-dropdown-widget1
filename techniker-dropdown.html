@@ -1,195 +1,146 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <title>Store Lookup Widget</title>
-  <script src="//js.jotform.com/JotFormCustomWidget.min.js"></script>
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #f9f9f9;
-      margin: 0;
-      padding: 20px;
-      color: #333;
-    }
-
-    .card {
-      background: #fff;
-      border-radius: 8px;
-      padding: 20px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    label {
-      display: block;
-      margin-bottom: 6px;
-      font-weight: 600;
-      font-size: 0.95em;
-      margin-top: 15px;
-    }
-
-    input[type="text"] {
-      width: 100%;
-      padding: 10px 12px;
-      font-size: 1em;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      transition: border-color 0.2s;
-    }
-
-    input[type="text"]:focus {
-      outline: none;
-      border-color: #007bff;
-    }
-
-    .error {
-      color: #d8000c;
-      font-size: 0.9em;
-      margin-top: 6px;
-      display: none;
-    }
-
-    .hint {
-      font-size: 0.85em;
-      color: #777;
-      margin-top: 4px;
-    }
-
-    .field-group {
-      margin-bottom: 10px;
-    }
-
-    .invalid-input {
-      border-color: #d8000c !important;
-    }
-  </style>
+<meta charset="UTF-8" />
+<title>Store Lookup Widget mit Offline-Fallback</title>
+<script src="//js.jotform.com/JotFormCustomWidget.min.js"></script>
+<style>
+  body { font-family: Arial, sans-serif; padding: 10px; margin: 0; }
+  label { display: block; margin-top: 15px; font-weight: bold; }
+  input[type=text] {
+    width: 100%; padding: 8px; font-size: 1em; border: 1px solid #ccc; border-radius: 5px;
+    box-sizing: border-box;
+  }
+  .error { color: red; font-size: 0.9em; margin-top: 6px; display: none; }
+</style>
 </head>
 <body>
-  <div class="card">
-    <div class="field-group">
-      <label for="storeInput">Store-Nummer</label>
-      <input id="storeInput" type="text" maxlength="4" inputmode="numeric" placeholder="z. B. 1001" />
-      <div class="hint">Gib eine 4-stellige Store-Nummer ein. Automatische Suche bei Treffer.</div>
-      <div id="storeError" class="error">Fehler</div>
-    </div>
+  <label for="storeInput">Store-Nummer (4-stellig)</label>
+  <input id="storeInput" maxlength="4" inputmode="numeric" placeholder="z. B. 1001" />
+  <div id="storeError" class="error">Fehler</div>
 
-    <div class="field-group">
-      <label for="city">Ort</label>
-      <input type="text" id="city" placeholder="Ort" />
-    </div>
+  <label for="city">Ort</label>
+  <input id="city" type="text" placeholder="Ort" />
 
-    <div class="field-group">
-      <label for="zip">PLZ</label>
-      <input type="text" id="zip" placeholder="Postleitzahl" />
-    </div>
+  <label for="zip">PLZ</label>
+  <input id="zip" type="text" placeholder="Postleitzahl" />
 
-    <div class="field-group">
-      <label for="street">Straße</label>
-      <input type="text" id="street" placeholder="Straßenname mit Hausnummer" />
-    </div>
-  </div>
+  <label for="street">Straße</label>
+  <input id="street" type="text" placeholder="Straße mit Hausnummer" />
 
-  <script>
-    (function () {
-      const jsonUrl = 'https://matthiasillenseer.github.io/techniker-dropdown-widget1/storedata.json';
-      let storeData = {};
+<script>
+(function(){
+  const storeInput = document.getElementById('storeInput');
+  const city = document.getElementById('city');
+  const zip = document.getElementById('zip');
+  const street = document.getElementById('street');
+  const storeError = document.getElementById('storeError');
 
-      const storeInput = document.getElementById('storeInput');
-      const city = document.getElementById('city');
-      const zip = document.getElementById('zip');
-      const street = document.getElementById('street');
-      const storeError = document.getElementById('storeError');
+  let storeData = {};
+  let onlineDataLoaded = false;
 
-      function clearFields() {
-        city.value = '';
-        zip.value = '';
-        street.value = '';
-      }
+  function parseStaticData(jsonString) {
+    try {
+      return JSON.parse(jsonString || '{}');
+    } catch(e) {
+      console.error('Fehler beim Parsen der statischen Store-Daten', e);
+      return {};
+    }
+  }
 
-      function fillFields(data) {
-        city.value = data.city || '';
-        zip.value = data.zip || '';
-        street.value = data.street || '';
-      }
-
-      function updateWidgetOutput() {
-        const storeNr = storeInput.value.trim();
-        const cityVal = city.value.trim();
-        const zipVal = zip.value.trim();
-        const streetVal = street.value.trim();
-
-        // Formatierten String erzeugen
-        const formattedOutput = `${storeNr}, ${cityVal}, ${zipVal}, ${streetVal}`;
-
-        JFCustomWidget.sendData({ value: formattedOutput });
-      }
-
-      function validateAndFill() {
-        const storeNr = storeInput.value.trim();
-        const isValidFormat = /^[0-9]{4}$/.test(storeNr);
-        const entry = isValidFormat ? storeData[storeNr] : null;
-
-        storeError.style.display = 'none';
-        storeInput.classList.remove('invalid-input');
-        clearFields();
-
-        if (!isValidFormat) {
-          storeError.textContent = 'Store-Nr. muss genau 4 Ziffern enthalten.';
-          storeError.style.display = 'block';
-          storeInput.classList.add('invalid-input');
-          updateWidgetOutput();
-          return;
-        }
-
-        if (!entry) {
-          storeError.textContent = 'Store-Nr. nicht gefunden – bitte manuell eingeben.';
-          storeError.style.display = 'block';
-          updateWidgetOutput();
-          return;
-        }
-
-        fillFields(entry.data);
-        updateWidgetOutput();
-      }
-
-      function loadData() {
-        fetch(jsonUrl + '?t=' + Date.now())
-          .then(res => res.json())
-          .then(data => {
-            storeData = data;
-          })
-          .catch(err => {
-            console.error('Fehler beim Laden der Storedaten', err);
-          });
-      }
-
-      // Init
-      JFCustomWidget.subscribe('ready', function () {
-        loadData();
-
-        storeInput.addEventListener('input', validateAndFill);
-        city.addEventListener('input', updateWidgetOutput);
-        zip.addEventListener('input', updateWidgetOutput);
-        street.addEventListener('input', updateWidgetOutput);
+  function loadOnlineData(url) {
+    fetch(url + '?t=' + Date.now())
+      .then(res => {
+        if(!res.ok) throw new Error('Netzwerkfehler');
+        return res.json();
+      })
+      .then(data => {
+        storeData = data;
+        onlineDataLoaded = true;
+        validateAndFill(); // ggf. neu füllen, falls Daten aktualisiert
+      })
+      .catch(e => {
+        console.warn('Online-Daten konnten nicht geladen werden, nutze statische Daten');
+        // onlineDataLoaded bleibt false -> fallback auf statische Daten
       });
+  }
 
-      JFCustomWidget.subscribe('submit', function () {
-        updateWidgetOutput();
-        JFCustomWidget.sendSubmit({
-          valid: /^[0-9]{4}$/.test(storeInput.value.trim()),
-          value: {
-            storeNr: storeInput.value.trim(),
-            city: city.value.trim(),
-            zip: zip.value.trim(),
-            street: street.value.trim()
-          }
-        });
-      });
-    })();
-  </script>
+  function clearFields() {
+    city.value = '';
+    zip.value = '';
+    street.value = '';
+  }
+
+  function fillFields(data) {
+    city.value = data.city || '';
+    zip.value = data.zip || '';
+    street.value = data.street || '';
+  }
+
+  function formatOutput(storeNr, cityVal, zipVal, streetVal) {
+    return `${storeNr}, ${cityVal}, ${zipVal}, ${streetVal}`;
+  }
+
+  function sendData() {
+    const formatted = formatOutput(storeInput.value.trim(), city.value.trim(), zip.value.trim(), street.value.trim());
+    JFCustomWidget.sendData({value: formatted});
+  }
+
+  function validateAndFill() {
+    const val = storeInput.value.trim();
+    const valid = /^[0-9]{4}$/.test(val);
+
+    storeError.style.display = 'none';
+    storeInput.classList.remove('invalid-input');
+    clearFields();
+
+    if (!valid) {
+      storeError.textContent = 'Store-Nr. muss genau 4 Ziffern enthalten.';
+      storeError.style.display = 'block';
+      sendData();
+      return;
+    }
+
+    // Datenquelle: Online oder statisch (Parameter)
+    const dataSource = onlineDataLoaded ? storeData : storeDataStatic;
+
+    if (dataSource[val]) {
+      fillFields(dataSource[val]);
+      sendData();
+    } else {
+      storeError.textContent = 'Store-Nr. nicht gefunden – bitte manuell eingeben.';
+      storeError.style.display = 'block';
+      sendData();
+    }
+  }
+
+  // Variablen für statische Daten aus Benutzerparameter
+  let storeDataStatic = {};
+
+  JFCustomWidget.subscribe('ready', function(data){
+    storeDataStatic = parseStaticData(data.settings.storeData);
+    storeData = storeDataStatic; // initial auf statische Daten setzen
+
+    // Versuch, Online-Daten zu laden, falls URL als Parameter definiert ist
+    if (data.settings.dataUrl) {
+      loadOnlineData(data.settings.dataUrl);
+    }
+
+    storeInput.addEventListener('input', validateAndFill);
+    city.addEventListener('input', sendData);
+    zip.addEventListener('input', sendData);
+    street.addEventListener('input', sendData);
+  });
+
+  JFCustomWidget.subscribe('submit', function(){
+    sendData();
+    const isValid = /^[0-9]{4}$/.test(storeInput.value.trim());
+    JFCustomWidget.sendSubmit({
+      valid: isValid,
+      value: formatOutput(storeInput.value.trim(), city.value.trim(), zip.value.trim(), street.value.trim())
+    });
+  });
+})();
+</script>
 </body>
 </html>
