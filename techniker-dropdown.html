@@ -1,121 +1,137 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8" />
-<title>Store Lookup Widget</title>
-<style>
-  body { font-family: Arial, sans-serif; padding: 10px; }
-  label { display: block; margin-top: 10px; }
-  input, select { width: 100%; padding: 5px; font-size: 14px; }
-  .info { margin-top: 10px; color: red; font-weight: bold; }
-  pre#debug { margin-top: 20px; background: #eee; padding: 10px; max-height: 200px; overflow: auto; font-size: 12px; }
-</style>
+  <meta charset="UTF-8" />
+  <title>Store Lookup Widget</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 10px;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    input, datalist {
+      width: 100%;
+      padding: 5px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    .info {
+      margin-top: 10px;
+      font-size: 14px;
+      color: red;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
 
-<label for="storeSelect">Store-Nr. auswählen oder eingeben:</label>
-<input list="storeList" id="storeSelect" name="storeSelect" autocomplete="off" />
-<datalist id="storeList"></datalist>
+  <label for="storeSelect">Store-Nr. auswählen oder eingeben:</label>
+  <input list="storeList" id="storeSelect" name="storeSelect" autocomplete="off" />
+  <datalist id="storeList"></datalist>
 
-<label for="city">Ort:</label>
-<input type="text" id="city" name="city" />
+  <label for="city">Ort:</label>
+  <input type="text" id="city" name="city" readonly />
 
-<label for="zip">PLZ:</label>
-<input type="text" id="zip" name="zip" />
+  <label for="zip">PLZ:</label>
+  <input type="text" id="zip" name="zip" readonly />
 
-<label for="street">Straße:</label>
-<input type="text" id="street" name="street" />
+  <label for="street">Straße:</label>
+  <input type="text" id="street" name="street" readonly />
 
-<div class="info" id="info"></div>
+  <div class="info" id="info"></div>
 
-<pre id="debug"></pre>
+  <script>
+    // Parameter auslesen
+    const params = window.parameters || {};
+    const storeDataParam = Array.isArray(params['storeData']) ? params['storeData'] : [];
 
-<script>
-  const params = window.parameters || {};
-  const storeDataParam = Array.isArray(params['storeData']) ? params['storeData'] : [];
+    // Store-Daten als Objekt vorbereiten
+    const storeData = {};
+    storeDataParam.forEach(item => {
+      try {
+        storeData[item.key] = JSON.parse(item.value);
+      } catch (e) {
+        console.warn("Fehler beim Parsen für Store", item.key, e);
+      }
+    });
 
-  console.log("storeDataParam:", storeDataParam);
+    // DOM-Elemente referenzieren
+    const storeSelect = document.getElementById('storeSelect');
+    const datalist = document.getElementById('storeList');
+    const city = document.getElementById('city');
+    const zip = document.getElementById('zip');
+    const street = document.getElementById('street');
+    const info = document.getElementById('info');
 
-  const storeData = {};
-  storeDataParam.forEach(item => {
-    try {
-      storeData[item.key] = JSON.parse(item.value);
-    } catch (e) {
-      console.warn("Fehler beim Parsen von Store-Daten für Key", item.key);
+    // Datalist mit Store-IDs füllen
+    Object.keys(storeData).forEach(key => {
+      const option = document.createElement('option');
+      option.value = key;
+      datalist.appendChild(option);
+    });
+
+    function clearFields() {
+      city.value = '';
+      zip.value = '';
+      street.value = '';
     }
-  });
 
-  document.getElementById('debug').textContent = JSON.stringify(storeData, null, 2);
-
-  const storeSelect = document.getElementById('storeSelect');
-  const datalist = document.getElementById('storeList');
-  const city = document.getElementById('city');
-  const zip = document.getElementById('zip');
-  const street = document.getElementById('street');
-  const info = document.getElementById('info');
-
-  // Datalist mit Keys füllen
-  Object.keys(storeData).forEach(key => {
-    const option = document.createElement('option');
-    option.value = key;
-    datalist.appendChild(option);
-  });
-
-  function clearFields() {
-    city.value = '';
-    zip.value = '';
-    street.value = '';
-  }
-
-  function setFields(data) {
-    city.value = data.city || '';
-    zip.value = data.zip || '';
-    street.value = data.street || '';
-  }
-
-  function setEditable(editable) {
-    city.readOnly = !editable;
-    zip.readOnly = !editable;
-    street.readOnly = !editable;
-  }
-
-  storeSelect.addEventListener('input', () => {
-    const val = storeSelect.value.trim();
-    if (storeData[val]) {
-      setFields(storeData[val]);
-      setEditable(false);
-      info.textContent = '';
-    } else if (val === '') {
-      clearFields();
-      setEditable(false);
-      info.textContent = '';
-    } else {
-      clearFields();
-      setEditable(true);
-      info.textContent = 'Store nicht gefunden, bitte Daten manuell eingeben.';
+    function setFields(data) {
+      city.value = data.city || '';
+      zip.value = data.zip || '';
+      street.value = data.street || '';
     }
-    sendAnswer();
-  });
 
-  function sendAnswer() {
-    if (window.parent && window.parent.postMessage) {
+    function setEditable(editable) {
+      city.readOnly = !editable;
+      zip.readOnly = !editable;
+      street.readOnly = !editable;
+    }
+
+    function sendAnswer() {
       const answer = {
         storeNr: storeSelect.value.trim(),
         city: city.value.trim(),
         zip: zip.value.trim(),
         street: street.value.trim()
       };
-      window.parent.postMessage({
-        type: 'setAnswer',
-        value: JSON.stringify(answer)
-      }, '*');
+
+      if (window.parent && window.parent.postMessage) {
+        window.parent.postMessage({
+          type: 'setAnswer',
+          value: JSON.stringify(answer)
+        }, '*');
+      }
     }
-  }
 
-  [city, zip, street].forEach(field => {
-    field.addEventListener('input', sendAnswer);
-  });
-</script>
+    // Event für Store-Auswahl
+    storeSelect.addEventListener('input', () => {
+      const selectedStore = storeSelect.value.trim();
+      const found = storeData[selectedStore];
 
+      if (found) {
+        setFields(found);
+        setEditable(false);
+        info.textContent = '';
+      } else if (selectedStore === '') {
+        clearFields();
+        setEditable(false);
+        info.textContent = '';
+      } else {
+        clearFields();
+        setEditable(true);
+        info.textContent = 'Store nicht gefunden. Bitte Daten manuell eingeben.';
+      }
+
+      sendAnswer();
+    });
+
+    [city, zip, street].forEach(field => {
+      field.addEventListener('input', sendAnswer);
+    });
+  </script>
 </body>
 </html>
